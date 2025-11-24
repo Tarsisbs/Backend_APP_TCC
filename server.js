@@ -21,13 +21,29 @@ bd.getConnection((err) => {
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'tarsisbsaz0911';
 
+/* -------------------------------------------------------
+   FUNÇÃO PADRÃO PARA PEGAR TOKEN DE FORMA SEGURA
+--------------------------------------------------------*/
+function getToken(req) {
+  const auth = req.headers['authorization'];
+  if (!auth) return null;
+
+  const parts = auth.split(' ');
+  if (parts.length !== 2) return null;
+
+  return parts[1]; // token limpo
+}
+
 app.get('/', (req, res) => res.json({ ok: true, env: process.env.NODE_ENV || 'dev' }));
 
-// LOGIN
+/* -------------------------------------------------------
+   LOGIN
+--------------------------------------------------------*/
 app.post('/login', async (req, res) => {
   try {
     const { email, senha } = req.body;
-    if (!email || !senha) return res.status(400).json({ error: 'email e senha são obrigatórios' });
+    if (!email || !senha)
+      return res.status(400).json({ error: 'email e senha são obrigatórios' });
 
     const hash = crypto.createHash('sha256').update(String(senha)).digest('hex');
 
@@ -36,14 +52,12 @@ app.post('/login', async (req, res) => {
       [email]
     );
 
-    if (!rows || rows.length === 0) {
+    if (!rows || rows.length === 0)
       return res.status(401).json({ error: 'Credenciais inválidas' });
-    }
 
     const user = rows[0];
-    if (user.senha_hash !== hash) {
+    if (user.senha_hash !== hash)
       return res.status(401).json({ error: 'Credenciais inválidas' });
-    }
 
     const token = jwt.sign({ id: user.id, nome: user.nome }, JWT_SECRET, { expiresIn: '8h' });
 
@@ -59,15 +73,12 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// ROTA /me (retorna apenas o payload do token)
+/* -------------------------------------------------------
+   /me (retorna apenas o payload do token)
+--------------------------------------------------------*/
 app.get('/me', async (req, res) => {
-  const auth = req.headers['authorization'];
-  if (!auth) return res.status(401).json({ error: 'Não autorizado' });
-
-  const parts = auth.split(' ');
-  if (parts.length !== 2) return res.status(401).json({ error: 'Formato do token inválido' });
-
-  const token = parts[1];
+  const token = getToken(req);
+  if (!token) return res.status(401).json({ error: 'Token ausente ou inválido' });
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);
@@ -77,13 +88,14 @@ app.get('/me', async (req, res) => {
   }
 });
 
-// ROTA /usuarios/me (NOVA — busca no banco e retorna perfil completo)
+/* -------------------------------------------------------
+   /usuarios/me (perfil completo do banco)
+--------------------------------------------------------*/
 app.get('/usuarios/me', async (req, res) => {
   try {
-    const auth = req.headers['authorization'];
-    if (!auth) return res.status(401).json({ error: 'Não autorizado' });
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Não autorizado' });
 
-    const token = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
 
     const [rows] = await bd.query(
@@ -102,7 +114,9 @@ app.get('/usuarios/me', async (req, res) => {
   }
 });
 
-// REGISTRO
+/* -------------------------------------------------------
+   REGISTRO
+--------------------------------------------------------*/
 app.post('/register', async (req, res) => {
   try {
     const { nome, email, senha } = req.body;
@@ -129,7 +143,9 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// NOTÍCIAS
+/* -------------------------------------------------------
+   NOTÍCIAS
+--------------------------------------------------------*/
 app.get("/api/noticias", async (req, res) => {
   try {
     const [rows] = await bd.query(
@@ -142,13 +158,14 @@ app.get("/api/noticias", async (req, res) => {
   }
 });
 
-// PERFIL (antigo, continua funcionando)
+/* -------------------------------------------------------
+   PERFIL (rota antiga, agora segura)
+--------------------------------------------------------*/
 app.get('/perfil', async (req, res) => {
   try {
-    const auth = req.headers['authorization'];
-    if (!auth) return res.status(401).json({ error: 'Não autorizado' });
+    const token = getToken(req);
+    if (!token) return res.status(401).json({ error: 'Não autorizado' });
 
-    const token = auth.split(' ')[1];
     const payload = jwt.verify(token, JWT_SECRET);
 
     const [rows] = await bd.query(
@@ -162,12 +179,14 @@ app.get('/perfil', async (req, res) => {
     res.json(rows[0]);
 
   } catch (err) {
-    console.error('Erro /perfil', err);
+    console.error('Erro /perfil:', err);
     res.status(500).json({ error: 'Erro interno' });
   }
 });
 
-// CALENDÁRIO
+/* -------------------------------------------------------
+   CALENDÁRIO
+--------------------------------------------------------*/
 app.get('/calendario', async (req, res) => {
   try {
     const [rows] = await bd.query('SELECT * FROM calendario ORDER BY data ASC');
@@ -178,7 +197,9 @@ app.get('/calendario', async (req, res) => {
   }
 });
 
-// FLUXO DE CAIXA
+/* -------------------------------------------------------
+   FLUXO DE CAIXA
+--------------------------------------------------------*/
 app.get('/fluxo_caixa', async (req, res) => {
   try {
     const [rows] = await bd.query(
@@ -191,6 +212,9 @@ app.get('/fluxo_caixa', async (req, res) => {
   }
 });
 
+/* -------------------------------------------------------
+   START SERVER
+--------------------------------------------------------*/
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
