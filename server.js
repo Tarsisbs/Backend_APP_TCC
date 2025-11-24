@@ -107,3 +107,47 @@ app.get("/api/noticias", async (req, res) => {
     res.status(500).json({ error: "Erro ao buscar notícias" });
   }
 });
+
+app.get('/perfil', async (req, res) => {
+  try {
+    const auth = req.headers['authorization'];
+    if (!auth) return res.status(401).json({ error: 'Não autorizado' });
+
+    const token = auth.split(' ')[1];
+    const payload = jwt.verify(token, JWT_SECRET);
+
+    const [rows] = await bd.query(
+      'SELECT id, nome, email FROM usuarios WHERE id = ? LIMIT 1',
+      [payload.id]
+    );
+
+    if (!rows || rows.length === 0)
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+
+    res.json(rows[0]);
+
+  } catch (err) {
+    console.error('Erro /perfil', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+app.get('/calendario', async (req, res) => {
+  try {
+    const [rows] = await bd.query('SELECT * FROM calendario ORDER BY data ASC');
+    res.json(rows);
+  } catch (err) {
+    console.error('Erro /calendario', err);
+    res.status(500).json({ error: 'Erro ao buscar calendário' });
+  }
+});
+
+app.get('/fluxo_caixa', async (req, res) => {
+  try {
+    const [rows] = await bd.query('SELECT * FROM fluxo_caixa ORDER BY data_movimento DESC');
+    res.json(rows);
+  } catch (err) {
+    console.error('Erro /fluxo_caixa', err);
+    res.status(500).json({ error: 'Erro ao buscar fluxo de caixa' });
+  }
+});
