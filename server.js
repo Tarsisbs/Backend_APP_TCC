@@ -10,6 +10,14 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+bd.getConnection((err) => {
+  if (err) {
+    console.log("ERRO AO CONECTAR NO MYSQL:", err);
+  } else {
+    console.log("MySQL conectado com sucesso!");
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'tarsisbsaz0911';
 
